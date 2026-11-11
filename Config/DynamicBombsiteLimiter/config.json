@@ -1,6 +1,7 @@
 {
   "Enabled": true,
   "BarrierCommandPermission": "@css/root",
+  "DisableBarriersDuringWarmup": true,
   "MinPlayersPerTeam": 5,
   "BlockedBombsite": "B",
   "CountBots": false,
@@ -9,6 +10,8 @@
   "HurtDamage": 10,
   "BounceSpeed": 300,
   "BounceUpwardVelocity": 100,
+  "ShowChatMessages": true,
+  "ShowHudMessages": true,
   "RoundStartHudDelaySeconds": 5,
-  "RoundStartHudRepeatDelaySeconds": 2.5
+  "RoundStartHudDurationSeconds": 5
 }

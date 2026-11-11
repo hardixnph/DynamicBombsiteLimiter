@@ -44,7 +44,7 @@ public sealed class DynamicBombsiteLimiter : BasePlugin
     private bool mapInitialized;
 
     public override string ModuleName => "DynamicBombsiteLimiter";
-    public override string ModuleVersion => "1.1.0";
+    public override string ModuleVersion => "1.2.0";
     public override string ModuleAuthor => "GSM-RO";
     public override string ModuleDescription => "Configurable logical bombsite barriers.";
 
@@ -160,6 +160,8 @@ public sealed class DynamicBombsiteLimiter : BasePlugin
         lastActionTimes.Clear();
         lastBarrierMessageTimes.Clear();
         roundStartHudKey = null;
+        // Pick up config.json edits made mid-map.
+        LoadGlobalConfig();
         UpdateBarrierStateForRound();
         if (!barriersActive)
         {
@@ -497,14 +499,49 @@ public sealed class DynamicBombsiteLimiter : BasePlugin
             return;
         }
 
+        string json;
         try
         {
-            config = JsonSerializer.Deserialize<Config>(File.ReadAllText(path), JsonOptions) ?? new Config();
+            json = File.ReadAllText(path);
+            config = JsonSerializer.Deserialize<Config>(json, JsonOptions) ?? new Config();
         }
         catch (JsonException exception)
         {
             config = new Config();
             Logger.LogError(exception, "Could not parse DynamicBombsiteLimiter global configuration {ConfigPath}.", path);
+            return;
+        }
+
+        AddMissingConfigKeys(path, json);
+    }
+
+    // Rewrites config.json when options added in newer versions are missing, keeping existing values.
+    private void AddMissingConfigKeys(string path, string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        var existingKeys = document.RootElement.EnumerateObject().Select(property => property.Name).ToHashSet();
+        var missingKeys = typeof(Config).GetProperties()
+            .Select(property => property.Name)
+            .Where(name => !existingKeys.Contains(name))
+            .ToList();
+        if (missingKeys.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            File.WriteAllText(path, JsonSerializer.Serialize(config, JsonOptions));
+            Logger.LogInformation("Added missing options to {ConfigPath}: {Keys}.", path, string.Join(", ", missingKeys));
+        }
+        catch (IOException exception)
+        {
+            Logger.LogError(exception, "Could not update DynamicBombsiteLimiter global configuration {ConfigPath}.", path);
         }
     }
 
@@ -889,12 +926,20 @@ public sealed class DynamicBombsiteLimiter : BasePlugin
                 return;
             }
 
-            foreach (var player in Utilities.GetPlayers())
+            if (config.ShowChatMessages)
             {
-                if (player.IsValid && IsActiveTeam(player.Team))
+                foreach (var player in Utilities.GetPlayers())
                 {
-                    Reply(player, restricted ? "Round.Restricted" : "Round.Open", config.BlockedBombsite);
+                    if (player.IsValid && IsActiveTeam(player.Team))
+                    {
+                        Reply(player, restricted ? "Round.Restricted" : "Round.Open", config.BlockedBombsite);
+                    }
                 }
+            }
+
+            if (!config.ShowHudMessages)
+            {
+                return;
             }
 
             roundStartHudKey = restricted ? "Hud.Restricted" : "Hud.Open";

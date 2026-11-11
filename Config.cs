@@ -13,6 +13,8 @@ public sealed class Config
     public int HurtDamage { get; set; } = 10;
     public float BounceSpeed { get; set; } = 300.0f;
     public float BounceUpwardVelocity { get; set; } = 100.0f;
+    public bool ShowChatMessages { get; set; } = true;
+    public bool ShowHudMessages { get; set; } = true;
     public float RoundStartHudDelaySeconds { get; set; } = 5.0f;
     public int RoundStartHudDurationSeconds { get; set; } = 5;
 }
